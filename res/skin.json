@@ -1,0 +1,10 @@
+{
+	"background": "#343434",
+	"searchbox-frame": "#464448",
+	"searchbox": "#232323",
+	"search-text": "#dcdcdc",
+	"selected-key": "#7d7d7d",
+	"unselected-key": "#dcdcdc",
+	"text-info": "#7d7d7d",
+	"cursor": "#dcdcdc" 
+}
