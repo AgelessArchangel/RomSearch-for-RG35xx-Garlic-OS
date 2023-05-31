@@ -19,10 +19,11 @@ ROM Search for Anbernic RG35XX (Garlic OS).
 ```
 	A - Type key
 	B - Backspace
+	X - Swap  left/right
 	Y - Hide Keyboard
 	Select - Space
 	Start - Enter/Hide keyboard
-	Menu - Back to main menu`
+	Menu - Back to main menu
 ```
 - When the keyboard is hidden
 ```
@@ -40,7 +41,7 @@ ROM Search for Anbernic RG35XX (Garlic OS).
 
 ## Technical details
 
-- Before launching an app or a ROM via retroarch, Garick OS creates a file `command.sh` in the `Roms/CFW/retroarch` folder.
+- Before launching an app or a ROM via retroarch, Garic OS creates a file `command.sh` in the `Roms/CFW/retroarch` folder.
 - After the script is created, the main app closes and the script will be run
 - This is done to free up the RAM allocated by the main app
 - romSearch does a similar thing, creating the `romsearch.sh` at the same location

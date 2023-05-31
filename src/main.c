@@ -65,6 +65,7 @@ char            mamelist[MAME_CONSOLE_COUNT][MAME_SYSTEM_NAME_SIZE] = MAME_CONSO
 char            mameFileBufferTag[MAME_BUFFER_LINES][MAME_BUFFER_TAG_SIZE];
 char            mameFileBufferLong[MAME_BUFFER_LINES][MAME_BUFFER_LONG_SIZE];
 int             mameFileSize = 0;
+char            keyboardAlign[6] = "left";
 
 SDL_Rect rect(int x, int y, int w, int h) { return (SDL_Rect){x, y, w, h}; }
 SDL_Color color(int r, int g, int b) { return (SDL_Color){r,g,b}; }
@@ -312,7 +313,13 @@ void processInput() {
                             }
                         }
                         else running = 0;
-                        break;
+                    break;
+                    case RG35_X_CODE:
+                        if (keyboardShown != 0) {
+                            if (strcmp(keyboardAlign, "left") == 0) strcpy(keyboardAlign, "right");
+                            else strcpy(keyboardAlign,"left");
+                        }
+                    break;
                     case RG35_Y_CODE:
                         keyboardShown = 1 - keyboardShown;
                     break;
@@ -364,30 +371,30 @@ void update(int delta) {
     updateScreenshot();
 }
 
-void drawRect(SDL_Rect pos, int o, SDL_Color c) {
+void drawRect(SDL_Rect pos, int o, SDL_Color c, char * align) {
     SDL_Rect invPos = rect(pos.x + o, pos.y, pos.w, pos.h);
     Uint32 mapColor = SDL_MapRGB(screen->format, c.r, c.g, c.b);
-    if (strcmp(textAligment, "right") == 0)  SDL_FillRect(screen, &invPos, mapColor);
+    if (strcmp(align, "right") == 0) SDL_FillRect(screen, &invPos, mapColor);
     else SDL_FillRect(screen, &pos, mapColor);
 }
 
-void drawText(SDL_Rect pos, int o,  char * text, TTF_Font *font, SDL_Color c) {
+void drawText(SDL_Rect pos, int o,  char * text, TTF_Font *font, SDL_Color c, char * align) {
     SDL_Rect invPos = rect(pos.x + o, pos.y, pos.w, pos.h);
     if (textSurface != NULL) SDL_FreeSurface(textSurface);
     textSurface = TTF_RenderUTF8_Blended(font, text, c);
-    if (strcmp(textAligment, "right") == 0) SDL_BlitSurface(textSurface, NULL, screen, &invPos);
+    if (strcmp(align, "right") == 0) SDL_BlitSurface(textSurface, NULL, screen, &invPos);
     else SDL_BlitSurface(textSurface, NULL, screen, &pos);
 }
 
 void drawKey(int x, int y, int o, int txo, int tyo, char * text, SDL_Color c) {
-    drawRect(rect(x, y, KY_W, KY_H), o, color(70, 68, 72));
-    drawText(rect(x + txo, y + tyo, 0, 0), o, text, keyboardFont, c);
+    drawRect(rect(x, y, KY_W, KY_H), o, color(70, 68, 72), keyboardAlign);
+    drawText(rect(x + txo, y + tyo, 0, 0), o, text, keyboardFont, c, keyboardAlign);
 }
 
 void drawObjects(void) {    
     for (uint8_t i; i < NO_OBJECTS; ++i) {
         if (objects[i].imgVisible == 1)   SDL_BlitSurface(objects[i].img, NULL, screen, &objects[i].imgPos);
-        if (objects[i].textVisible == 1)  drawText(objects[i].textPos, 0, objects[i].name, textFont, activeColor);
+        if (objects[i].textVisible == 1)  drawText(objects[i].textPos, 0, objects[i].name, textFont, activeColor, textAligment);
     }
 }
 
@@ -400,32 +407,32 @@ void drawRomsTextbox(void) {
     for (uint8_t i = 0; (i < 8) && ((i + first)< romsFound); ++i) {
         pos = rect(textMargin, 140 + i * 25, 0, 0);
         o = WINDOW_W - strlen(romsList[i + first].displayName) * (ROMS_FONT_SIZE - 3) - 2 * textMargin;
-        if ((i + first) == selRomIdx)  drawText(pos, o, romsList[i + first].displayName, romsFont, activeColor);
-        else drawText(pos, o, romsList[i + first].displayName, romsFont, inactiveColor);
+        if ((i + first) == selRomIdx)  drawText(pos, o, romsList[i + first].displayName, romsFont, activeColor, textAligment);
+        else drawText(pos, o, romsList[i + first].displayName, romsFont, inactiveColor, textAligment);
     }
 }
 
 void drawKeyboard() {
     int delta, o = KB_FLIP_OFFSET; 
-    drawRect(rect(KB_X, KB_Y, KB_W, KB_H), o, skin.background);                   
-    drawRect(rect(KB_X + 6, KB_Y + 10, SB_W, SB_H), o, skin.sbFrame);                    
-    drawRect(rect(KB_X + 8, KB_Y + 12, SB_W - 4, SB_H - 4), o, skin.sb); 
+    drawRect(rect(KB_X, KB_Y, KB_W, KB_H), o, skin.background, keyboardAlign);                   
+    drawRect(rect(KB_X + 6, KB_Y + 10, SB_W, SB_H), o, skin.sbFrame, keyboardAlign);                    
+    drawRect(rect(KB_X + 8, KB_Y + 12, SB_W - 4, SB_H - 4), o, skin.sb, keyboardAlign); 
     for (uint8_t i = 0; i < KB_ROWS; ++i) {
         for (uint8_t j = 0; j < KB_COLUMNS; ++j) {
             if ((i == selKeyIIdx) && (j == selKeyJIdx)) {
-                drawRect(rect(KB_X + 5 + (KY_W + 2) * j, KB_Y + 67 + (KY_H + 2) * i, KY_W + 2, KY_H + 2), o, skin.key);
+                drawRect(rect(KB_X + 5 + (KY_W + 2) * j, KB_Y + 67 + (KY_H + 2) * i, KY_W + 2, KY_H + 2), o, skin.key, keyboardAlign);
                 drawKey(KB_X + 6 + (KY_W + 2) * j, KB_Y + 68 + (KY_H + 2) * i, o, 9, 11, keyboardLayout[i][j], skin.keySel);
             } else drawKey(KB_X + 6 + (KY_W + 2) * j, KB_Y + 68 + (KY_H + 2) * i, o, 9, 9, keyboardLayout[i][j], skin.key);
         }
-        drawText(rect(KB_X + 8, KB_Y + 240, 0, 0), o, "Select/Space     Start/Done", keyboardFont, skin.info);
+        drawText(rect(KB_X + 8, KB_Y + 240, 0, 0), o, "Select/Space     Start/Done", keyboardFont, skin.info, keyboardAlign);
     }
-    drawText(rect(KB_X + 16, KB_Y + 20, 0, 0), o, searchWord, romsFont, skin.st);
+    drawText(rect(KB_X + 16, KB_Y + 20, 0, 0), o, searchWord, romsFont, skin.st, keyboardAlign);
     delta = SDL_GetTicks() - cursorOld;
     if (delta > (2 * CURSOR_BLINK_DELAY)) {
-        drawRect(rect(KB_X + (strlen(searchWord) + 1) * 17, KB_Y + 22, 2, 22), o, skin.sb);
+        drawRect(rect(KB_X + (strlen(searchWord) + 1) * 17, KB_Y + 22, 2, 22), o, skin.sb, keyboardAlign);
         cursorOld = SDL_GetTicks();
     }
-    else if (delta > CURSOR_BLINK_DELAY) drawRect(rect(KB_X + (strlen(searchWord) + 1) * 17, KB_Y + 22, 2, 22), o, skin.cursor);
+    else if (delta > CURSOR_BLINK_DELAY) drawRect(rect(KB_X + (strlen(searchWord) + 1) * 17, KB_Y + 22, 2, 22), o, skin.cursor, keyboardAlign);
 }
 
 void render(void) {    
