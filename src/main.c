@@ -31,9 +31,10 @@ typedef struct Skin_Tag
 }Skin;
 
 typedef struct Rom_Tag {
-    char    system[SYSTEM_NAME_SIZE];
-    char    displayName[FILE_NAME_SIZE];
-    char    fileName[FILE_NAME_SIZE];
+    char      system[SYSTEM_NAME_SIZE];
+    char      displayName[FILE_NAME_SIZE];
+    char      fileName[FILE_NAME_SIZE];
+    uint8_t   romLocation;
 }Rom;
 
 Skin            skin;
@@ -167,18 +168,17 @@ void loadSkin() {
     cJSON_Delete(json);
 }
 
-void searchFillRomList() {
+void searchRoms(char * romPath , uint8_t romLocation) {
     DIR * dir;
     DIR * console;
     char * ptrDispName;
     struct dirent * entry;
     struct dirent * rom;
     char path[PATH_MAX + 1];    
-    romsFound = 0;
-    if ((dir = opendir (ROMS_PATH)) == NULL) return;
+    if ((dir = opendir (romPath)) == NULL) return;
     while ((entry = readdir (dir)) != NULL) {
         if ((entry->d_type == DT_DIR) && (strcmp(entry->d_name, ".") != 0) && (strcmp(entry->d_name, "..") != 0)) {
-            sprintf(&path[0], "%s/%s", ROMS_PATH, entry->d_name);
+            sprintf(&path[0], "%s/%s", romPath, entry->d_name);
             if ((console = opendir (path)) == NULL) return;
             while ((rom = readdir(console)) != NULL) {
                  if ((rom->d_type == DT_REG) && (romsFound < NUMBER_OF_FILES)) {
@@ -191,6 +191,7 @@ void searchFillRomList() {
                             break;
                         }
                     if (strcasestr(romsList[romsFound].displayName, searchWord) != NULL) {
+                        romsList[romsFound].romLocation = romLocation;
                         strcpy(romsList[romsFound].system, entry->d_name);
                         strcpy(romsList[romsFound++].fileName, rom->d_name);
                     }
@@ -200,6 +201,12 @@ void searchFillRomList() {
         }
     }
     closedir(dir);
+}
+
+void searchFillRomList() {
+    romsFound = 0;
+    searchRoms(SD1_ROMS_PATH, 0);
+    searchRoms(SD2_ROMS_PATH, 1);
 }
 
 int setup() {
@@ -349,7 +356,10 @@ void updateScreenshot(void) {
     if (romsFound != 0) {
         objects[OBJ_SCREENSHOT_INDEX].imgVisible = 1;
         objects[OBJ_CONSOLE_INDEX].imgVisible = 1;
-        sprintf(path, "%s/%s/Imgs/%s", ROMS_PATH, romsList[selRomIdx].system, romsList[selRomIdx].fileName);
+        if (romsList[romsFound].romLocation == 0)
+            sprintf(path, "%s/%s/Imgs/%s", SD1_ROMS_PATH, romsList[selRomIdx].system, romsList[selRomIdx].fileName);
+        else
+            sprintf(path, "%s/%s/Imgs/%s", SD2_ROMS_PATH, romsList[selRomIdx].system, romsList[selRomIdx].fileName);
         len = strlen(path);
         path[len-3] = 'p'; path[len-2] = 'n'; path[len-1] = 'g';
         SDL_FreeSurface(objects[OBJ_SCREENSHOT_INDEX].img);

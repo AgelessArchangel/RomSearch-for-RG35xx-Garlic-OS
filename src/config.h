@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define VERSION                 "0.2"
+#define VERSION                 "0.3"
 
 #define WINDOW_W                640             /* Window width                 */
 #define WINDOW_H                480             /* Window height                */
@@ -16,14 +16,15 @@
 #define JSON_BUFFER_SIZE        3000
 #define SEARCH_WORD_SIZE        18
 
-#define ROMS_PATH               "../../../Roms"
-#define COREMAPPING_JSON_PATH   "../../../CFW/config/coremapping.json" 
-#define SETTINGS_JSON_PATH      "../../../CFW/skin/settings.json"
-#define FONT_PATH               "../../../CFW/font/Joystix-Monospace.otf"
-#define BACKGROUND_PATH         "../../../CFW/skin/background.png"
-#define ICONS_PATH              "../../../CFW/skin"
+#define SD1_ROMS_PATH           "/mnt/mmc/Roms"
+#define SD2_ROMS_PATH		"/mnt/SDCARD/Roms"
+#define COREMAPPING_JSON_PATH   "/mnt/mmc/CFW/config/coremapping.json"
+#define SETTINGS_JSON_PATH      "/mnt/mmc/CFW/skin/settings.json"
+#define FONT_PATH               "/mnt/mmc/CFW/font/Joystix-Monospace.otf"
+#define BACKGROUND_PATH         "/mnt/mmc/CFW/skin/background.png"
+#define ICONS_PATH              "/mnt/mmc/CFW/skin"
 #define COMMAND_SH_PATH         "/mnt/mmc/CFW/retroarch/romsearch.sh"
-#define MAME_FILELIST_PATH      "../../../CFW/config/mame.csv"
+#define MAME_FILELIST_PATH      "/mnt/mmc/CFW/config/mame.csv"
 #define SKIN_PATH               "skin.json"
 #define TEXT_FONT_SIZE          22
 #define ROMS_FONT_SIZE          20
