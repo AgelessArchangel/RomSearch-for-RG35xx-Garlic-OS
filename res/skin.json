@@ -6,5 +6,8 @@
 	"selected-key": "#7d7d7d",
 	"unselected-key": "#dcdcdc",
 	"text-info": "#7d7d7d",
-	"cursor": "#dcdcdc" 
+	"cursor": "#dcdcdc", 
+	"keyboard-and-result-pos-y": 105,
+	"system-pos-x": 435,
+	"system-pos-y": 25
 }

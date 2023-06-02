@@ -7,12 +7,14 @@ ROM Search for Anbernic RG35XX (Garlic OS).
 ## Details
 
 - ###  This software is provided as is! Please back up your card! I am not responsible for any data you may lose!
-- This was created for personal usage.
+- This was created for personal use.
 - Compiled for Garlic OS using  nfriedly / miyoo-toolchain
-- The app shows the first 100 roms found that match the search pattern. 
+- The app shows the first 100 roms found that match the search pattern.  
 - For mame roms  `"ARCADE", "CPS1", "CPS2", "CPS3", "FBNEO", "MAME2000", "NEOGEOCD", "NEOGEO"` the search is done based on mame.csv
 - The app tries to follow the Garlic OS theme.
 - The colors of the keyboard can be changed by adjusting `skin.json` file
+- The app tries to find the need files in the CFW. If a file is missing or broken, the app will use the files in the resource folder.
+- The app shoudl work in both single-sd and double-sd configuration! The app will try to search for ROMs on both SD cards.
 
 ## Key Shortcuts
 - When keyboard is showing
@@ -46,4 +48,5 @@ ROM Search for Anbernic RG35XX (Garlic OS).
 - This is done to free up the RAM allocated by the main app
 - romSearch does a similar thing, creating the `romsearch.sh` at the same location
 - I could not find a way to implement the same behaviour without changing the start script.
+- The mame.csv file is buffered in RAM and the fact the file is sorted is used to stop the search as soon as possible. This is still very inefficient. I am working on a more efficient search. 
 
