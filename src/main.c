@@ -14,13 +14,12 @@ typedef struct Object_Tag {
     SDL_Rect    imgPos;                      /* Position of the button image on the screen */
     SDL_Rect    textPos;                     /* Position of the text under the button      */     
     char        name[10];                    /* Image text                                 */
-    char        imgFile[FILE_NAME_SIZE];     /* PNG File                                   */
+    char        imgFile[PATH_MAX + 1];       /* PNG File                                   */
     uint8_t     imgVisible;                  /* Image visible                              */
     uint8_t     textVisible;                 /* Text visible                               */
 }Object;
 
-typedef struct Skin_Tag 
-{
+typedef struct Skin_Tag {
     SDL_Color background;
     SDL_Color sbFrame;
     SDL_Color sb;
@@ -33,8 +32,8 @@ typedef struct Skin_Tag
 
 typedef struct Rom_Tag {
     char      system[SYSTEM_NAME_SIZE];
-    char      displayName[FILE_NAME_SIZE];
-    char      fileName[FILE_NAME_SIZE];
+    char      displayName[PATH_MAX + 1];
+    char      fileName[PATH_MAX + 1];
     uint8_t   romLocation;
 }Rom;
 
@@ -54,7 +53,7 @@ uint8_t         selKeyIIdx             = 0;     /* Selected key i index   */
 uint8_t         selKeyJIdx             = 0;     /* Selected key j index   */
 char            romCoreMapping[CORE_NAME_SIZE];
 char            searchWord[SEARCH_WORD_SIZE];
-char            textAligment[10];
+char            textAlign[10];
 SDL_Surface     *screen, *background, *textSurface;
 SDL_Rect        backgroundLocation, textLocation;
 TTF_Font        *textFont, *romsFont, *keyboardFont, *searchWordFont;
@@ -70,16 +69,25 @@ int             kbPosY;
 char            mamelist[MAME_CONSOLE_COUNT][MAME_SYSTEM_NAME_SIZE] = MAME_CONSOLE_LIST;
 char            mameFileBufferTag[MAME_BUFFER_LINES][MAME_BUFFER_TAG_SIZE];
 char            mameFileBufferLong[MAME_BUFFER_LINES][MAME_BUFFER_LONG_SIZE];
-int             mameFileSize = 0;
-char            keyboardAlign[6] = "left";
+unsigned int    mameFileSize = 0;
+char            keyboardAlign[6];
 uint8_t         updateScreenshot = 0;
-char            language[20];
+char            languagePath[PATH_MAX+1] = "<<No language file>>";
 char            font[40];
 
 
 SDL_Rect rect(int x, int y, int w, int h) { return (SDL_Rect){x, y, w, h}; }
 SDL_Color color(int r, int g, int b) { return (SDL_Color){r,g,b}; }
 
+int loadSurface(SDL_Surface **surf, char * image) {
+     *surf = IMG_Load(image);
+     return (surf == NULL) ? 0 : 1;
+}
+
+void freeSurface(SDL_Surface **surf) {
+    if (*surf != NULL) SDL_FreeSurface(*surf);
+    *surf = NULL;
+}
 
 void drawRect(SDL_Rect pos, int o, SDL_Color c, char * align) {
     SDL_Rect invPos = rect(pos.x + o, pos.y, pos.w, pos.h);
@@ -88,31 +96,60 @@ void drawRect(SDL_Rect pos, int o, SDL_Color c, char * align) {
     else SDL_FillRect(screen, &pos, mapColor);
 }
 
-void drawText(SDL_Rect pos, int o,  char * text, TTF_Font *font, SDL_Color c, char * align) {
+void drawText(SDL_Rect pos, int o,  char * text, TTF_Font *font, SDL_Color c, char * align, int from) {
     SDL_Rect invPos = rect(pos.x + o, pos.y, pos.w, pos.h);
-    if (textSurface != NULL) SDL_FreeSurface(textSurface);
     textSurface = TTF_RenderUTF8_Blended(font, text, c);
-    if (strcmp(align, "right") == 0) SDL_BlitSurface(textSurface, NULL, screen, &invPos);
-    else SDL_BlitSurface(textSurface, NULL, screen, &pos);
+    if (strcmp(text, "") != 0) {
+        if (textSurface != NULL) {
+            if (strcmp(align, "right") == 0) SDL_BlitSurface(textSurface, NULL, screen, &invPos);
+            else if (strcmp(align, "left") == 0) SDL_BlitSurface(textSurface, NULL, screen, &pos);
+            else {
+                SDL_Rect center = rect((pos.x + invPos.x) / 2, pos.y, pos.w, pos.h);
+                SDL_BlitSurface(textSurface, NULL, screen, &center);
+            }
+            freeSurface(&textSurface);   
+        }
+        else fprintf(stderr, "Failed to draw text: %s   From: %d\n", text, from);
+    }
 }
 
 void drawKey(int x, int y, int o, char * text, SDL_Color c) {
     int fw, fh; 
     drawRect(rect(x, y, KY_W, KY_H), o, color(70, 68, 72), keyboardAlign);
     TTF_SizeUTF8(keyboardFont, text, &fw, &fh);
-    drawText(rect(x + (KY_W - fw) / 2, y + (KY_H - fh)/2, 0, 0), o, text, keyboardFont, c, keyboardAlign);
+    drawText(rect(x + (KY_W - fw) / 2, y + (KY_H - fh)/2, 0, 0), o, text, keyboardFont, c, keyboardAlign, 0);
 }
 
-void searchMameRom(char * fileName) {
+int loadSurfaceFullScreen(SDL_Surface ** surf, char * image) {
+    SDL_Surface * tmp = IMG_Load(image);
+    double wf = 1.0;
+    double hf = 1.0;
+    if ((tmp != NULL)) {
+        wf = (double)WINDOW_W/tmp->w;
+        hf = (double)WINDOW_H/tmp->h; 
+        *surf = zoomSurface(tmp, wf, hf, 0);
+    }
+    else return 0;
+    SDL_FreeSurface(tmp);
+    return 1;
+}
+
+void searchMameRomFast(char *fileName) {
+    int l = 0;
+    int h = mameFileSize - 1;
+    int m;
     int res;
-    for (int i = 0; i < mameFileSize; ++i) {
-        res = strcmp(&mameFileBufferTag[i][0], fileName);
-        if (res > 0) break;
-        else if (res == 0) {
-            strcpy(romsList[romsFound].displayName, &mameFileBufferLong[i][0]);
+    
+    while (l <= h) {
+        m = (l + h) / 2;
+        res = strcmp(&mameFileBufferTag[m][0], fileName);
+        if (res == 0) {
+            strcpy(romsList[romsFound].displayName, &mameFileBufferLong[m][0]);
             romsList[romsFound].displayName[strcspn(romsList[romsFound].displayName, "\r\n")] = '\0';
             break;
-        }
+        } 
+        if (res < 0) l = m + 1;
+        else h =  m - 1;
     }
 }
 
@@ -120,7 +157,10 @@ SDL_Color getColorFromJson(char * colorTag, SDL_Color defCol) {
     SDL_Color color;
     cJSON *name = cJSON_GetObjectItemCaseSensitive(json,  colorTag);
     if (cJSON_IsString(name) != 0) sscanf(name->valuestring,"#%02x%02x%02x",&color.r, &color.g, &color.b);
-    else return defCol;
+    else {
+        fprintf(stderr,"%s not found in the json file.\n", colorTag);
+        return  defCol;
+    }
     return color;
 }
 
@@ -165,11 +205,15 @@ void initObjects(void) {
     for (uint8_t i = 0; i < NO_OBJECTS; ++i) {
         if (strcmp(objects[i].imgFile, "") != 0) {
             sprintf(&path[0], "%s/%s", ICONS_PATH, objects[i].imgFile);
-            objects[i].img = IMG_Load(path);
+            loadSurface(&objects[i].img, path);
             if (objects[i].img == NULL) {
                 sprintf(&path[0], "%s/%s", DEF_ICONS_PATH, objects[i].imgFile);
-                fprintf(stderr,"Icon: %s not found. Default loaded.\n", objects[i].imgFile);
-                objects[i].img = IMG_Load(path);
+                fprintf(stderr,"Icon: %s not found. Loading default.\n", objects[i].imgFile);
+                loadSurface(&objects[i].img, path);
+                if (objects[i].img == NULL)  {
+                    fprintf(stderr, "Default icon %s not found. Closing\n", objects[i].imgFile);
+                    exit(1);
+                }
             }
         } 
     }
@@ -177,29 +221,52 @@ void initObjects(void) {
 }
 
 int loadJsonFile(char * path, char * defPath) {
-    FILE *file = fopen(path, "r");
-
+    FILE *file;
+    uint8_t retVal = 0;  /* 0 - No file, 1 - Requested file, 2 - Default file */
+    const char *error_ptr;
+    
+    file = fopen(path, "r");
     if (file == NULL)  {
-        fprintf(stderr, "%s not found. Default %s loaded.\n", path, defPath);
+        fprintf(stderr, "File %s not found. Loading default file %s.\n", path, defPath);
         file = fopen(defPath, "r");
-    }
+        if (file == NULL) {
+            fprintf(stderr, "Default file %s not found.\n", defPath);
+            return 0;
+        }
+        retVal = 2;
+    } else retVal = 1;
     fread(jsonFileBuffer, 1, sizeof(jsonFileBuffer), file);
     fclose(file);
     json = cJSON_Parse(jsonFileBuffer);
     if (json == NULL) {
-        const char *error_ptr = cJSON_GetErrorPtr();
-        if (error_ptr != NULL)  fprintf(stderr, "Error parsing the JSON file: %s default file loaded.\n", error_ptr);
+        error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)  fprintf(stderr, "Error parsing the JSON file: %s. Parsing the default file.\n", error_ptr);
         cJSON_Delete(json);
+        if (retVal == 2) return 0; /* Both the requested and the deleted files failed */
         file = fopen(defPath, "r");
+        if (file == NULL) {
+            fprintf(stderr, "Default file %s not found.\n", defPath);
+            return 0;
+        }
+        else retVal = 2;
         fread(jsonFileBuffer, 1, sizeof(jsonFileBuffer), file);
         json = cJSON_Parse(jsonFileBuffer);
-        return 0;
+        if (json == NULL) {
+            error_ptr = cJSON_GetErrorPtr();
+            if (error_ptr != NULL)  fprintf(stderr, "Error parsing the JSON file: %s. Parsing the default file.\n", error_ptr);
+            cJSON_Delete(json);
+            return 0;
+        }
+        return 1;
     }
-    return 1;
+    return retVal;
 }
 
 int loadCoreMapping(void) {
-    loadJsonFile(COREMAPPING_JSON_PATH, DEF_COREMAPPING_JSON_PATH);
+    if (loadJsonFile(COREMAPPING_JSON_PATH, DEF_COREMAPPING_JSON_PATH) == 0) {
+        fprintf(stderr, "The ROM can not be started.\n");
+        return 0;
+    }
     if (romsFound != 0) {
         cJSON *name = cJSON_GetObjectItemCaseSensitive(json,  romsList[selRomIdx].system);
         if ((cJSON_IsString(name) != 0) && (name->valuestring != NULL)) strcpy(romCoreMapping, name->valuestring);
@@ -218,15 +285,35 @@ int loadCoreMapping(void) {
 
 void loadSettings(void) {
     cJSON *name;
-    loadJsonFile(SETTINGS_JSON_PATH, DEF_SETTINGS_JSON_PATH);
-    name = cJSON_GetObjectItemCaseSensitive(json,  "text-alignment");
-    if (cJSON_IsString(name) != 0) strcpy(textAligment, name->valuestring);
-    else strcpy(textAligment, TEXT_ALIGN);
+    
+    if (loadJsonFile(SETTINGS_JSON_PATH, DEF_SETTINGS_JSON_PATH) == 0) {
+        fprintf(stderr, "Default settings values loaded.\n");
+        strcpy(textAlign, DEF_TEXT_ALIGN);
+        strcpy(keyboardAlign, DEF_KEYBOARD_ALIGN);
+        textMargin = DEF_TEXT_MARGIN;
+        activeColor = DEF_C_ACTIVE_TEXT;
+        inactiveColor = DEF_C_INACTIVE_TEXT;
+        return;
+    }
+    name = cJSON_GetObjectItemCaseSensitive(json, "text-alignment");
+    if (cJSON_IsString(name) != 0) {
+        strcpy(textAlign, name->valuestring);
+        if (strcmp(textAlign, "right") == 0) strcpy(keyboardAlign, "right");
+        else strcpy(keyboardAlign, "left");
+    }
+    else {
+        fprintf(stderr,"\"text-alignment\" not found in the json file.\n");
+        strcpy(textAlign, DEF_TEXT_ALIGN);
+        strcpy(keyboardAlign, DEF_KEYBOARD_ALIGN);
+    }
     name = cJSON_GetObjectItemCaseSensitive(json,  "text-margin");
     if (cJSON_IsNumber(name) != 0) textMargin = (int)name->valuedouble;
-    else textMargin = TEXT_MARGIN;
-    activeColor = getColorFromJson("color-active", C_ACTIVE_TEXT);
-    inactiveColor = getColorFromJson("color-inactive", C_INACTIVE_TEXT);
+    else {
+        fprintf(stderr,"\"text-margin\" not found in the json file.\n");
+        textMargin = DEF_TEXT_MARGIN;
+    }
+    activeColor = getColorFromJson("color-active", DEF_C_ACTIVE_TEXT);
+    inactiveColor = getColorFromJson("color-inactive", DEF_C_INACTIVE_TEXT);
     cJSON_Delete(json);
 }
 
@@ -244,59 +331,55 @@ void loadSkin() {
     name = cJSON_GetObjectItemCaseSensitive(json,  "keyboard-and-result-pos-y");
     if (cJSON_IsNumber(name) != 0) kbPosY = (int)name->valuedouble;
     else kbPosY = KB_Y;
-    name = cJSON_GetObjectItemCaseSensitive(json,  "system-pos-x");
+    name = cJSON_GetObjectItemCaseSensitive(json, "system-pos-x");
     if (cJSON_IsNumber(name) != 0) objects[OBJ_CONSOLE_INDEX].imgPos.x = (int)name->valuedouble;
-    name = cJSON_GetObjectItemCaseSensitive(json,  "system-pos-y");
+    name = cJSON_GetObjectItemCaseSensitive(json, "system-pos-y");
     if (cJSON_IsNumber(name) != 0) objects[OBJ_CONSOLE_INDEX].imgPos.y = (int)name->valuedouble;
     cJSON_Delete(json);
 }
 
-void loadLanguage(char * language) {
-    DIR * dir;
+void loadLanguage() {
+    cJSON *name; 
     FILE *file;
-    uint8_t found = 0;
-    cJSON *name;
-    char path[PATH_MAX + 1];    
-    struct dirent * entry;
+    char * line = NULL;
+    size_t len = 0;
+    uint8_t jsonRes;
     
-    strcpy(path, DEF_LANGUAGES_PATH);
-    if ((dir = opendir (LANGUAGES_PATH)) == NULL)
-        fprintf(stderr, "Language file %s not found. Default file %s loaded.\n", language, DEF_LANGUAGES_PATH);
-    else {
-        while (((entry = readdir (dir)) != NULL) && (found == 0)) {
-            if (entry->d_type == DT_REG) {
-                if (strcmp(entry->d_name, language) == 0) {
-                    found = 1;
-                    sprintf(path, "%s/%s", LANGUAGES_PATH, entry->d_name);
-                }
-            }
+    sprintf(font, "%s/", DEF_FONT_PATH);
+    file = fopen(LANGUAGE_FLAG_PATH, "r");;
+    if (file != NULL) {
+        if (getline(&line, &len, file) != -1) {
+            sprintf(languagePath, "%s/%s", LANGUAGES_PATH,line);
+            languagePath[strcspn(languagePath, "\r\n")] = '\0';
+            strcat(languagePath, ".json");
         }
+        else fprintf(stderr, "Language flag file is empty.\n");
+        fclose(file); 
     }
-    closedir(dir);
-    if (found == 0)
-        fprintf(stderr, "Language file %s not found. Default file %s loaded.\n", language, DEF_LANGUAGES_PATH);
-    file = fopen(path, "r");
-    if (file == NULL)  {
-        fprintf(stderr, "No language file found (default also missing)\n");
+    else fprintf(stderr, "Language flag file not found.\n");
+    romsFontSize = DEF_ROMS_FONT_SIZE;
+    textFontSize = DEF_TEXT_FONT_SIZE;
+    
+    jsonRes = loadJsonFile(languagePath, DEF_LANGUAGES_PATH);
+    if (jsonRes == 0) { 
         strcpy(font, DEF_FONT);
-        textFontSize = DEF_TEXT_FONT_SIZE;
+        return;
     }
+    else if (jsonRes == 1) sprintf(font, "%s/", FONTS_PATH);
+    else sprintf(font, "%s/", DEF_FONT_PATH);
+    name = cJSON_GetObjectItemCaseSensitive(json,  "font");
+    if (cJSON_IsString(name) != 0) strcat(font, name->valuestring);
     else {
-        fclose(file);
-        loadJsonFile(path, DEF_FONT_PATH);
-        name = cJSON_GetObjectItemCaseSensitive(json,  "font");
-        if (cJSON_IsString(name) != 0) 
-            if (found != 0) sprintf(font, "%s/%s", FONTS_PATH, name->valuestring);
-            else sprintf(font, "%s/%s", DEF_FONT_PATH, name->valuestring);
-        else strcpy(font, DEF_FONT);
-        name = cJSON_GetObjectItemCaseSensitive(json,  "font-size");
-        if (cJSON_IsNumber(name) != 0) romsFontSize = (int)name->valuedouble;
-        else romsFontSize = DEF_ROMS_FONT_SIZE;
-        name = cJSON_GetObjectItemCaseSensitive(json,  "button-guide-font-size");
-        if (cJSON_IsNumber(name) != 0)  textFontSize = (int)name->valuedouble;
-        else textFontSize = DEF_TEXT_FONT_SIZE;
-        cJSON_Delete(json);
+        fprintf(stderr,"\"font\" not found in the json file.\n");
+        strcpy(font, DEF_FONT);
     }
+    name = cJSON_GetObjectItemCaseSensitive(json,  "font-size");
+    if (cJSON_IsNumber(name) != 0) romsFontSize = (int)name->valuedouble;
+    else fprintf(stderr,"\"font-size\" not found in the json file. Default set to %d\n", DEF_ROMS_FONT_SIZE);
+    name = cJSON_GetObjectItemCaseSensitive(json,  "button-guide-font-size");
+    if (cJSON_IsNumber(name) != 0)  textFontSize = (int)name->valuedouble;
+    else fprintf(stderr,"\"button-guide-font-size\" not found in the json file. Default set to %d\n", DEF_TEXT_FONT_SIZE);
+    cJSON_Delete(json);
 }
 
 void searchRoms(char * romPath , uint8_t romLocation) {
@@ -318,7 +401,7 @@ void searchRoms(char * romPath , uint8_t romLocation) {
                     if (ptrDispName != NULL) ptrDispName[0] = '\0';
                     for (uint8_t i = 0; i < MAME_CONSOLE_COUNT; ++i)
                         if (strcmp(entry->d_name, &mamelist[i][0]) == 0) {
-                            searchMameRom(romsList[romsFound].displayName);
+                            searchMameRomFast(romsList[romsFound].displayName);
                             break;
                         }
                     if ((strcasestr(romsList[romsFound].displayName, searchWord)) != NULL) {
@@ -348,8 +431,9 @@ void bufferMameFile() {
     
     mameFile = fopen(MAME_FILELIST_PATH, "r");
     if (mameFile == NULL)  {
-        fprintf(stderr, "mame.csv not found. Default mame.csv loaded.\n");
+        fprintf(stderr, "mame.csv not found. Loading default mame.csv.\n");
         mameFile = fopen(DEF_MAME_FILELIST_PATH, "r");
+        if (mameFile == NULL) fprintf(stderr, "Default mame.csv not found.\n");
     }
     while (getline(&line, &len, mameFile) != -1) { 
         sscanf(line, "%[^,],%[^,]", &mameFileBufferTag[mameFileSize], &mameFileBufferLong[mameFileSize]);
@@ -359,9 +443,8 @@ void bufferMameFile() {
 }
 
 int setup() {
-    FILE *file = fopen(COMMAND_SH_PATH, "r");
-    char * line = NULL;
-    size_t len;
+    FILE *file = fopen(ROMSEARCH_SH_PATH, "r");
+
     if (file != NULL)  {
         fprintf(stderr, "romSearch.sh found! \n");
         fclose(file); 
@@ -383,57 +466,61 @@ int setup() {
     SDL_ShowCursor(SDL_DISABLE);
     screen       = SDL_SetVideoMode(WINDOW_W, WINDOW_H, 32, SDL_SWSURFACE);
     loadSkin();
-    file = fopen(LANGUAGE_FLAG_PATH, "r");
-    if (file == NULL)
-        fprintf(stderr, "Language flag missing. Default language set to %s.\n", DEF_LANGUAGES_PATH);
-    else  {
-        if (getline(&line, &len, file) == -1) 
-            fprintf(stderr, "Language flag empty. Default language set to %s.\n", DEF_LANGUAGES_PATH);
-        else {
-            strcpy(language, line);
-            language[strcspn(language, "\r\n")] = '\0';
-            strcat(language, ".json");
-        }
-        fclose(file); 
-    }
-    loadLanguage(language);
+    loadLanguage();
     textFont     = TTF_OpenFont(font, textFontSize);
     if (textFont == NULL) {
-        fprintf(stderr, "Font not found. Default font loaded.\n");
-        textFont     = TTF_OpenFont(DEF_FONT_PATH, textFontSize);
+        fprintf(stderr, "Font not found. Loading default font.\n");
+        textFont     = TTF_OpenFont(DEF_FONT, textFontSize);
+        if (textFont == NULL) {
+            fprintf(stderr, "Default font not found!. Closing.\n");
+            return 0;
+        }
     }
     romsFont     = TTF_OpenFont(font, romsFontSize);
     if (romsFont == NULL) {
-        fprintf(stderr, "Font not found. Default font loaded.\n");
-        romsFont     = TTF_OpenFont(DEF_FONT_PATH, romsFontSize);
+        fprintf(stderr, "Font not found. Loading default font.\n");
+        romsFont     = TTF_OpenFont(DEF_FONT, romsFontSize);
+        if (romsFont == NULL) {
+            fprintf(stderr, "Default font not found!. Closing.\n");
+            return 0;
+        }
     }
     keyboardFont    = TTF_OpenFont(font, KEYBOARD_FONT_SIZE);
     if (keyboardFont == NULL) {
-        fprintf(stderr, "Font not found. Default font loaded.\n");
-        keyboardFont     = TTF_OpenFont(DEF_FONT_PATH, KEYBOARD_FONT_SIZE);
+        fprintf(stderr, "Font not found. Loading default font.\n");
+        keyboardFont     = TTF_OpenFont(DEF_FONT, KEYBOARD_FONT_SIZE);
+        if (keyboardFont == NULL) {
+            fprintf(stderr, "Default font not found!. Closing.\n");
+            return 0;
+        }
     }
     searchWordFont    = TTF_OpenFont(font, SEARCH_WORD_FONT_SIZE);
     if (searchWordFont == NULL) {
-        fprintf(stderr, "Font not found. Default font loaded.\n");
-        searchWordFont     = TTF_OpenFont(DEF_FONT_PATH, SEARCH_WORD_FONT_SIZE);
+        fprintf(stderr, "Font not found. Loading default font.\n");
+        searchWordFont     = TTF_OpenFont(DEF_FONT, SEARCH_WORD_FONT_SIZE);
+        if (textFont == NULL) {
+            fprintf(stderr, "Default font not found!. Closing.\n");
+            return 0;
+        }
     }
-    background   = IMG_Load(BACKGROUND_PATH); 
+    loadSurfaceFullScreen(&background, BACKGROUND_PATH); 
     if (background == NULL) {
-        fprintf(stderr, "Background not found. Default background loaded.\n");
-        background   = IMG_Load(DEF_BACKGROUND_PATH);
+        fprintf(stderr, "Background not found. Loading default background.\n");
+        loadSurfaceFullScreen(&background, DEF_BACKGROUND_PATH);
+        if (background == NULL)
+            fprintf(stderr, "Default background not found.\n");
     }
     loadSettings();
     initObjects();
     return 1;
 }
 
-int createCommandScript() {
-    
-    if (loadCoreMapping() == 0) return 0;
-    FILE *file = fopen(COMMAND_SH_PATH, "w");
+void createCommandScript() {
+    if (loadCoreMapping() == 0) return;
+    FILE *file = fopen(ROMSEARCH_SH_PATH, "w");
     if (file == NULL)  {
-        fprintf(stderr, "Cannot open command.sh file.\n");
-        return 0;
+        fprintf(stderr, "Cannot open romsearch.sh file.\n");
+        return;
     }
     fprintf(file, "#!/bin/sh\n");
     fprintf(file, "export LANG=en_us\n");
@@ -445,7 +532,6 @@ int createCommandScript() {
             romCoreMapping, SD2_ROMS_PATH, romsList[selRomIdx].system, romsList[selRomIdx].fileName);
     fprintf(file, "exit $?\n");
     fclose(file);
-    return 1;
 }
 
 void processInput() {
@@ -544,17 +630,6 @@ void processInput() {
     }
 }
 
-int loadSurface(SDL_Surface ** surf, char * image) {
-    SDL_Surface * tmp = IMG_Load(image);
-    if (tmp != NULL) {
-        double wf =  (double)WINDOW_W/tmp->w;
-        double hf =  (double)WINDOW_H/tmp->h; 
-        *surf = rotozoomSurface(tmp, wf, hf, 1);
-    }
-    else return 0;
-    SDL_FreeSurface(tmp);
-    return 1;
-}
 
 void loadScreenshot(void) {
     char path[PATH_MAX + 1] = "";
@@ -569,12 +644,13 @@ void loadScreenshot(void) {
             sprintf(path, "%s/%s/Imgs/%s", SD2_ROMS_PATH, romsList[selRomIdx].system, romsList[selRomIdx].fileName);
         if ((extension = strrchr(path, '.')) != NULL) extension[0] = '\0';
         strcat(path,".png");
-        if (objects[OBJ_SCREENSHOT_INDEX].img != NULL) SDL_FreeSurface(objects[OBJ_SCREENSHOT_INDEX].img);
-        if (loadSurface(&objects[OBJ_SCREENSHOT_INDEX].img, path) == 0) objects[OBJ_SCREENSHOT_INDEX].imgVisible = 0;
+        freeSurface(&objects[OBJ_SCREENSHOT_INDEX].img);
+        if (loadSurfaceFullScreen(&objects[OBJ_SCREENSHOT_INDEX].img, path) == 0) 
+            objects[OBJ_SCREENSHOT_INDEX].imgVisible = 0;
         sprintf(path, "%s/system/%s.png", ICONS_PATH, romsList[selRomIdx].system);
-        if (objects[OBJ_CONSOLE_INDEX].img) SDL_FreeSurface(objects[OBJ_CONSOLE_INDEX].img);
-        objects[OBJ_CONSOLE_INDEX].img = IMG_Load(path);
-        if (objects[OBJ_CONSOLE_INDEX].img == NULL) objects[OBJ_CONSOLE_INDEX].imgVisible = 0;
+        freeSurface(&objects[OBJ_CONSOLE_INDEX].img);
+        if (loadSurface(&objects[OBJ_CONSOLE_INDEX].img, path) == 0)  
+            objects[OBJ_CONSOLE_INDEX].imgVisible = 0;
     } else {
         objects[OBJ_SCREENSHOT_INDEX].imgVisible = 0;
         objects[OBJ_CONSOLE_INDEX].imgVisible = 0;
@@ -596,7 +672,7 @@ void update(int delta) {
 void drawObjects(void) {    
     for (uint8_t i; i < NO_OBJECTS; ++i) {
         if (objects[i].imgVisible == 1)   SDL_BlitSurface(objects[i].img, NULL, screen, &objects[i].imgPos);
-        if (objects[i].textVisible == 1)  drawText(objects[i].textPos, 0, objects[i].name, textFont, activeColor, textAligment);
+        if (objects[i].textVisible == 1)  drawText(objects[i].textPos, 0, objects[i].name, textFont, activeColor, textAlign, 1);
     }
 }
 
@@ -607,12 +683,12 @@ void drawRomsTextbox(void) {
     
     selRomIdx = (selRomIdx >= romsFound) ? romsFound - 1 : selRomIdx;  
     first = (selRomIdx < 4) ? 0 : selRomIdx - 3;
-    TTF_SizeUTF8(romsFont, romsList[0].displayName, &fw, &fh);
     for (uint8_t i = 0; (i < 8) && ((i + first)< romsFound); ++i) {
+        TTF_SizeUTF8(romsFont, romsList[i+first].displayName, &fw, &fh);
         pos = rect(textMargin, kbPosY + (KB_H - (8 * fh)) / 2 + i * fh, 0, 0);
-        o = WINDOW_W - strlen(romsList[i + first].displayName) * ( romsFontSize - 3) - 2 * textMargin;
-        if ((i + first) == selRomIdx)  drawText(pos, o, romsList[i + first].displayName, romsFont, activeColor, textAligment);
-        else drawText(pos, o, romsList[i + first].displayName, romsFont, inactiveColor, textAligment);
+        o = WINDOW_W - fw - pos.x - textMargin;
+        if ((i + first) == selRomIdx)  drawText(pos, o, romsList[i + first].displayName, romsFont, activeColor, textAlign, 2);
+        else drawText(pos, o, romsList[i + first].displayName, romsFont, inactiveColor, textAlign, 3);
     }
 }
 
@@ -625,7 +701,7 @@ void drawKeyboard() {
     drawRect(rect(KB_X, kby, KB_W, KB_H), o, skin.background, keyboardAlign);                   
     drawRect(rect(KB_X + 6, kby + 10, SB_W, SB_H), o, skin.sbFrame, keyboardAlign);                    
     drawRect(rect(KB_X + 8, kby + 12, SB_W - 4, SB_H - 4), o, skin.sb, keyboardAlign); 
-    drawText(rect(KB_X + 16, kby + 20, 0, 0), o, searchWord, searchWordFont, skin.st, keyboardAlign);
+    drawText(rect(KB_X + 16, kby + 20, 0, 0), o, searchWord, searchWordFont, skin.st, keyboardAlign, 4);
     delta = SDL_GetTicks() - cursorOld;
     if (delta > (2 * CURSOR_BLINK_DELAY)) {
         drawRect(rect(KB_X + 17 + fw, kby + 22, 2, 22), o, skin.sb, keyboardAlign);
@@ -639,13 +715,15 @@ void drawKeyboard() {
                 drawKey(KB_X + 6 + (KY_W + 2) * j, kby + 68 + (KY_H + 2) * i, o, keyboardLayout[i][j], skin.keySel);
             } else drawKey(KB_X + 6 + (KY_W + 2) * j, kby + 68 + (KY_H + 2) * i, o, keyboardLayout[i][j], skin.key);
         }
-        drawText(rect(KB_X + 8, kby + 240, 0, 0), o, "Select/Space", keyboardFont, skin.info, keyboardAlign);
+        drawText(rect(KB_X + 8, kby + 240, 0, 0), o, "Select/Space", keyboardFont, skin.info, keyboardAlign, 5);
         TTF_SizeUTF8(keyboardFont, "Start/Done", &fw, &fh);
-        drawText(rect(KB_W - fw, kby + 240, 0, 0), o, "Start/Done", keyboardFont, skin.info, keyboardAlign);
+        drawText(rect(KB_W - fw, kby + 240, 0, 0), o, "Start/Done", keyboardFont, skin.info, keyboardAlign, 6);
     }
 }
 
 void render(void) {
+    Uint32 mapColor = SDL_MapRGB(screen->format,BACKGROUND_C.r, BACKGROUND_C.g, BACKGROUND_C.b);
+    SDL_FillRect(screen, NULL, mapColor);
     SDL_BlitSurface(background, NULL, screen, &backgroundLocation);
     drawObjects();
     if (romsFound != 0) drawRomsTextbox();
@@ -655,11 +733,10 @@ void render(void) {
 
 void cleanup() {
     for (int i = 0; i < NO_OBJECTS; ++i) {
-        SDL_FreeSurface(objects[i].img);
+            freeSurface(&objects[i].img);
     }
-    if (screen != NULL)SDL_FreeSurface(screen);
-    if (background != NULL)SDL_FreeSurface(background);
-    if (textSurface != NULL)SDL_FreeSurface(textSurface);
+    freeSurface(&screen);
+    freeSurface(&background);
     TTF_CloseFont(textFont);
     TTF_CloseFont(romsFont);
     TTF_CloseFont(keyboardFont);
@@ -673,9 +750,7 @@ int main() {
     uint16_t old         = 0;
     uint16_t delta       = 0;
 
-    fprintf(stderr, "Start setup... \n");
     if (setup() == 0) return 0;
-    fprintf(stderr, "Main loop started.\n");
     while (running == 1) {
         new = SDL_GetTicks();
         delta = new - old;                  /* Time since last frame */
