@@ -172,18 +172,22 @@ void initButtonGuide(void) {
     
     TTF_SizeUTF8(textFont, objects[OBJ_MOVE_BT_INDEX].name, &fw, &fh);
     objects[OBJ_MOVE_BT_INDEX].textPos.w = fw;
+    objects[OBJ_MOVE_BT_INDEX].imgPos.y = WINDOW_H - objects[OBJ_MOVE_BT_INDEX].img->h - 10;
     objects[OBJ_MOVE_BT_INDEX].textPos.y = objects[OBJ_MOVE_BT_INDEX].imgPos.y + (objects[OBJ_MOVE_BT_INDEX].img->h - fh) / 2;
     total += objects[OBJ_MOVE_BT_INDEX].img->w + fw + 5;
     TTF_SizeUTF8(textFont, objects[OBJ_OPEN_BT_INDEX].name, &fw, &fh);
     objects[OBJ_OPEN_BT_INDEX].textPos.w = fw;
+    objects[OBJ_OPEN_BT_INDEX].imgPos.y = WINDOW_H - objects[OBJ_OPEN_BT_INDEX].img->h - 10;
     objects[OBJ_OPEN_BT_INDEX].textPos.y = objects[OBJ_MOVE_BT_INDEX].imgPos.y + (objects[OBJ_MOVE_BT_INDEX].img->h - fh) / 2;
     total += objects[OBJ_OPEN_BT_INDEX].img->w + fw + 5;
     TTF_SizeUTF8(textFont, objects[OBJ_BACK_BT_INDEX].name, &fw, &fh);
     objects[OBJ_BACK_BT_INDEX].textPos.w = fw;
+    objects[OBJ_BACK_BT_INDEX].imgPos.y = WINDOW_H - objects[OBJ_BACK_BT_INDEX].img->h - 10;
     objects[OBJ_BACK_BT_INDEX].textPos.y = objects[OBJ_MOVE_BT_INDEX].imgPos.y + (objects[OBJ_MOVE_BT_INDEX].img->h - fh) / 2;
     total += objects[OBJ_BACK_BT_INDEX].img->w + fw + 5;
     TTF_SizeUTF8(textFont, objects[OBJ_KEYBOARD_BT_INDEX].name, &fw, &fh);
     objects[OBJ_KEYBOARD_BT_INDEX].textPos.w = fw;
+    objects[OBJ_KEYBOARD_BT_INDEX].imgPos.y = WINDOW_H - objects[OBJ_KEYBOARD_BT_INDEX].img->h - 10;
     objects[OBJ_KEYBOARD_BT_INDEX].textPos.y = objects[OBJ_MOVE_BT_INDEX].imgPos.y + (objects[OBJ_MOVE_BT_INDEX].img->h - fh) / 2;
     total += objects[OBJ_KEYBOARD_BT_INDEX].img->w + fw + 5;
     gap  = (WINDOW_W - total) / 3;
