@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define VERSION                    "1.0"
+#define VERSION                    "1.1"
 
 #define WINDOW_W                   640             /* Window width                 */
 #define WINDOW_H                   480             /* Window height                */
@@ -62,12 +62,12 @@
 #define KEYBOARD_FONT_SIZE         14
 #define SEARCH_WORD_FONT_SIZE      20
 
-#define MAME_CONSOLE_LIST          {"ARCADE", "CPS1", "CPS2", "CPS3", "FBNEO", "MAME2000", "NEOGEOCD", "NEOGEO"}
+#define MAME_CONSOLE_LIST          {"ARCADE", "CPS1", "CPS2", "CPS3", "FBNEO", "MAME2000", "NEOGEOCD", "NEOGEO", "FBA2012"}
 #define MAME_SYSTEM_NAME_SIZE      10
 #define MAME_BUFFER_LINES          40000
 #define MAME_BUFFER_TAG_SIZE       30
 #define MAME_BUFFER_LONG_SIZE      180
-#define MAME_CONSOLE_COUNT         8
+#define MAME_CONSOLE_COUNT         9
 
 #define KB_ROWS                    4
 #define KB_COLUMNS                 10

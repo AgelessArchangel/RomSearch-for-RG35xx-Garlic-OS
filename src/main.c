@@ -13,7 +13,7 @@ typedef struct Object_Tag {
     SDL_Surface * img;                       /* Unselected image                           */
     SDL_Rect    imgPos;                      /* Position of the button image on the screen */
     SDL_Rect    textPos;                     /* Position of the text under the button      */     
-    char        name[10];                    /* Image text                                 */
+    char        name[20];                    /* Image text                                 */
     char        imgFile[PATH_MAX + 1];       /* PNG File                                   */
     uint8_t     imgVisible;                  /* Image visible                              */
     uint8_t     textVisible;                 /* Text visible                               */
@@ -73,7 +73,8 @@ unsigned int    mameFileSize = 0;
 char            keyboardAlign[6];
 uint8_t         updateScreenshot = 0;
 char            languagePath[PATH_MAX+1] = "<<No language file>>";
-char            font[40];
+char            font[100];
+int             hideHelper = 0;
 
 
 SDL_Rect rect(int x, int y, int w, int h) { return (SDL_Rect){x, y, w, h}; }
@@ -171,15 +172,19 @@ void initButtonGuide(void) {
     
     TTF_SizeUTF8(textFont, objects[OBJ_MOVE_BT_INDEX].name, &fw, &fh);
     objects[OBJ_MOVE_BT_INDEX].textPos.w = fw;
+    objects[OBJ_MOVE_BT_INDEX].textPos.y = objects[OBJ_MOVE_BT_INDEX].imgPos.y + (objects[OBJ_MOVE_BT_INDEX].img->h - fh) / 2;
     total += objects[OBJ_MOVE_BT_INDEX].img->w + fw + 5;
     TTF_SizeUTF8(textFont, objects[OBJ_OPEN_BT_INDEX].name, &fw, &fh);
     objects[OBJ_OPEN_BT_INDEX].textPos.w = fw;
+    objects[OBJ_OPEN_BT_INDEX].textPos.y = objects[OBJ_MOVE_BT_INDEX].imgPos.y + (objects[OBJ_MOVE_BT_INDEX].img->h - fh) / 2;
     total += objects[OBJ_OPEN_BT_INDEX].img->w + fw + 5;
     TTF_SizeUTF8(textFont, objects[OBJ_BACK_BT_INDEX].name, &fw, &fh);
     objects[OBJ_BACK_BT_INDEX].textPos.w = fw;
+    objects[OBJ_BACK_BT_INDEX].textPos.y = objects[OBJ_MOVE_BT_INDEX].imgPos.y + (objects[OBJ_MOVE_BT_INDEX].img->h - fh) / 2;
     total += objects[OBJ_BACK_BT_INDEX].img->w + fw + 5;
     TTF_SizeUTF8(textFont, objects[OBJ_KEYBOARD_BT_INDEX].name, &fw, &fh);
     objects[OBJ_KEYBOARD_BT_INDEX].textPos.w = fw;
+    objects[OBJ_KEYBOARD_BT_INDEX].textPos.y = objects[OBJ_MOVE_BT_INDEX].imgPos.y + (objects[OBJ_MOVE_BT_INDEX].img->h - fh) / 2;
     total += objects[OBJ_KEYBOARD_BT_INDEX].img->w + fw + 5;
     gap  = (WINDOW_W - total) / 3;
     objects[OBJ_MOVE_BT_INDEX].imgPos.x = pos;
@@ -198,6 +203,16 @@ void initButtonGuide(void) {
     pos += objects[OBJ_KEYBOARD_BT_INDEX].img->w;
     objects[OBJ_KEYBOARD_BT_INDEX].textPos.x = pos;
     pos += objects[OBJ_KEYBOARD_BT_INDEX].textPos.w + gap;
+    if (hideHelper != 0) {
+        objects[OBJ_MOVE_BT_INDEX].imgVisible = 0;
+        objects[OBJ_MOVE_BT_INDEX].textVisible = 0;
+        objects[OBJ_OPEN_BT_INDEX].imgVisible = 0;
+        objects[OBJ_OPEN_BT_INDEX].textVisible = 0;
+        objects[OBJ_BACK_BT_INDEX].imgVisible = 0;
+        objects[OBJ_BACK_BT_INDEX].textVisible = 0;
+        objects[OBJ_KEYBOARD_BT_INDEX].imgVisible = 0;
+        objects[OBJ_KEYBOARD_BT_INDEX].textVisible = 0;
+    }
 }
 
 void initObjects(void) {
@@ -335,6 +350,8 @@ void loadSkin() {
     if (cJSON_IsNumber(name) != 0) objects[OBJ_CONSOLE_INDEX].imgPos.x = (int)name->valuedouble;
     name = cJSON_GetObjectItemCaseSensitive(json, "system-pos-y");
     if (cJSON_IsNumber(name) != 0) objects[OBJ_CONSOLE_INDEX].imgPos.y = (int)name->valuedouble;
+    name = cJSON_GetObjectItemCaseSensitive(json, "hide-helper-buttons");
+    if (cJSON_IsNumber(name) != 0) hideHelper = (int)name->valuedouble;
     cJSON_Delete(json);
 }
 
@@ -346,7 +363,7 @@ void loadLanguage() {
     uint8_t jsonRes;
     
     sprintf(font, "%s/", DEF_FONT_PATH);
-    file = fopen(LANGUAGE_FLAG_PATH, "r");;
+    file = fopen(LANGUAGE_FLAG_PATH, "r");
     if (file != NULL) {
         if (getline(&line, &len, file) != -1) {
             sprintf(languagePath, "%s/%s", LANGUAGES_PATH,line);
@@ -535,7 +552,7 @@ void createCommandScript() {
 }
 
 void processInput() {
-    uint16_t delta;
+    int delta;
     SDL_PollEvent(&event);
     int fw, fh;
     switch(event.type) {
@@ -616,6 +633,7 @@ void processInput() {
                     break;
                     case RG35_START_CODE:
                         if ((keyboardShown != 0) && (strlen(searchWord) != 0)) keyboardShown = 0;
+					break;
                     default:
                     break;
                 }
@@ -638,10 +656,13 @@ void loadScreenshot(void) {
     if (romsFound != 0) {
         objects[OBJ_SCREENSHOT_INDEX].imgVisible = 1;
         objects[OBJ_CONSOLE_INDEX].imgVisible = 1;
-        if (romsList[selRomIdx].romLocation == 0)
+        if (romsList[selRomIdx].romLocation == 0) {
             sprintf(path, "%s/%s/Imgs/%s", SD1_ROMS_PATH, romsList[selRomIdx].system, romsList[selRomIdx].fileName);
-        else
+            strcpy(objects[0].name, "SEARCH (SD1)");
+        } else {
             sprintf(path, "%s/%s/Imgs/%s", SD2_ROMS_PATH, romsList[selRomIdx].system, romsList[selRomIdx].fileName);
+            strcpy(objects[0].name, "SEARCH (SD2)");
+        }
         if ((extension = strrchr(path, '.')) != NULL) extension[0] = '\0';
         strcat(path,".png");
         freeSurface(&objects[OBJ_SCREENSHOT_INDEX].img);
@@ -654,6 +675,7 @@ void loadScreenshot(void) {
     } else {
         objects[OBJ_SCREENSHOT_INDEX].imgVisible = 0;
         objects[OBJ_CONSOLE_INDEX].imgVisible = 0;
+        strcpy(objects[0].name, "SEARCH");
     }
 }
 

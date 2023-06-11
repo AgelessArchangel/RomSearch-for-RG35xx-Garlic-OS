@@ -9,5 +9,6 @@
 	"cursor": "#dcdcdc", 
 	"keyboard-and-result-pos-y": 105,
 	"system-pos-x": 435,
-	"system-pos-y": 25
+	"system-pos-y": 25,
+	"hide-helper-buttons": 0
 }
