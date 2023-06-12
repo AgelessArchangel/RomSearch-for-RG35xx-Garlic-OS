@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define VERSION                    "1.1"
+#define VERSION                    "1.2"
 
 #define WINDOW_W                   640             /* Window width                 */
 #define WINDOW_H                   480             /* Window height                */
@@ -52,8 +52,9 @@
 #define RG35_R1_CODE               108             /* RG35xx button code */
 #define RG35_R2_CODE               107             /* RG35xx button code */
 
-#define DEF_C_ACTIVE_TEXT          color(220, 220, 220) /* Default active text color (Garlic skin)      */
-#define DEF_C_INACTIVE_TEXT        color(125, 125, 125) /* Default inactive text color (Garlic skin)    */
+#define DEF_C_ACTIVE_TEXT          color(255, 255, 255) /* Default active text color (Garlic skin)      */
+#define DEF_C_INACTIVE_TEXT        color(107, 107, 107) /* Default inactive text color (Garlic skin)    */
+#define DEF_C_GUIDE_TEXT           color(255, 255, 255) /* Default guide text color (Garlic skin)       */
 #define DEF_TEXT_ALIGN             "left"
 #define DEF_KEYBOARD_ALIGN         "left"
 #define DEF_TEXT_MARGIN            352
@@ -85,11 +86,12 @@
 #define KB_C_BACKGND               color(52, 52, 52)    /* Default keyboard background color            */
 #define KB_C_SB_FRAME              color(70, 68, 72)    /* Default keyboard search box frame color      */  
 #define KB_C_SB                    color(35, 35, 35)    /* Default keyboard search box color            */
-#define KB_C_KEY_SEL               color(125, 125, 125) /* Default keyboard selected key color          */
-#define KB_C_KEY                   color(220, 220, 220) /* Default keyboard unselected key color        */ 
+#define KB_C_KEY                   color(125, 125, 125) /* Default keyboard key color                   */
+#define KB_C_KEY_TXT_SEL           color(125, 125, 125) /* Default keyboard selected key text color     */
+#define KB_C_KEY_TXT               color(220, 220, 220) /* Default keyboard unselected key text color   */ 
 #define KB_C_INFO                  color(125, 125, 125) /* Default keyboard info text color             */  
 #define KB_C_ST                    color(220, 220, 220) /* Default keyboard search text color           */
-#define KB_C_CURSOR                color(220, 220, 220) /* Default keyboard cursor color                */   
+#define KB_C_CURSOR                color(220, 220, 220) /* Default keyboard cursor color                */
 
 #define MENU_BUTTON                RG35_MENU_CODE  /* Code of the pressed button to exit the application                     */
 #define MENU_BUTTON_INDEX          0               /* Button config list index of the pressed button to exit the application */

@@ -23,8 +23,9 @@ typedef struct Skin_Tag {
     SDL_Color background;
     SDL_Color sbFrame;
     SDL_Color sb;
-    SDL_Color keySel;
     SDL_Color key;
+    SDL_Color keySelTxt;
+    SDL_Color keyTxt;
     SDL_Color info;
     SDL_Color st;
     SDL_Color cursor;
@@ -62,7 +63,7 @@ SDL_Event       event;
 cJSON           *json;
 uint8_t         startSearch;
 int             cursorOld;
-SDL_Color       activeColor, inactiveColor;
+SDL_Color       activeColor, inactiveColor, guideColor;
 int             romsFontSize;
 int             textFontSize;
 int             kbPosY;
@@ -116,7 +117,7 @@ void drawText(SDL_Rect pos, int o,  char * text, TTF_Font *font, SDL_Color c, ch
 
 void drawKey(int x, int y, int o, char * text, SDL_Color c) {
     int fw, fh; 
-    drawRect(rect(x, y, KY_W, KY_H), o, color(70, 68, 72), keyboardAlign);
+    drawRect(rect(x, y, KY_W, KY_H), o, skin.key, keyboardAlign);
     TTF_SizeUTF8(keyboardFont, text, &fw, &fh);
     drawText(rect(x + (KY_W - fw) / 2, y + (KY_H - fh)/2, 0, 0), o, text, keyboardFont, c, keyboardAlign, 0);
 }
@@ -312,6 +313,7 @@ void loadSettings(void) {
         textMargin = DEF_TEXT_MARGIN;
         activeColor = DEF_C_ACTIVE_TEXT;
         inactiveColor = DEF_C_INACTIVE_TEXT;
+        guideColor = DEF_C_GUIDE_TEXT;
         return;
     }
     name = cJSON_GetObjectItemCaseSensitive(json, "text-alignment");
@@ -331,22 +333,24 @@ void loadSettings(void) {
         fprintf(stderr,"\"text-margin\" not found in the json file.\n");
         textMargin = DEF_TEXT_MARGIN;
     }
-    activeColor = getColorFromJson("color-active", DEF_C_ACTIVE_TEXT);
+    guideColor = getColorFromJson("color-guide", DEF_C_GUIDE_TEXT);
     inactiveColor = getColorFromJson("color-inactive", DEF_C_INACTIVE_TEXT);
+    activeColor = getColorFromJson("color-active", DEF_C_ACTIVE_TEXT);
     cJSON_Delete(json);
 }
 
 void loadSkin() {
     cJSON *name;
     loadJsonFile(SKIN_PATH, SKIN_PATH);
-    skin.background = getColorFromJson("background", KB_C_BACKGND);
-    skin.sbFrame = getColorFromJson("searchbox-frame",KB_C_SB_FRAME);
-    skin.sb = getColorFromJson("searchbox", KB_C_SB);
-    skin.st = getColorFromJson("search-text", KB_C_ST);
-    skin.keySel = getColorFromJson("selected-key", KB_C_KEY_SEL);
-    skin.key = getColorFromJson("unselected-key", KB_C_KEY);
-    skin.info = getColorFromJson("text-info", KB_C_INFO);
-    skin.cursor = getColorFromJson("cursor", KB_C_CURSOR);
+    skin.background = getColorFromJson("color-background", KB_C_BACKGND);
+    skin.sbFrame = getColorFromJson("color-searchbox-frame",KB_C_SB_FRAME);
+    skin.sb = getColorFromJson("color-searchbox", KB_C_SB);
+    skin.st = getColorFromJson("color-search-text", KB_C_ST);
+    skin.key = getColorFromJson("color-key", KB_C_KEY_TXT_SEL);
+    skin.keySelTxt = getColorFromJson("color-selected-key-text", KB_C_KEY_TXT_SEL);
+    skin.keyTxt = getColorFromJson("color-unselected-key-text", KB_C_KEY_TXT);
+    skin.info = getColorFromJson("color-text-info", KB_C_INFO);
+    skin.cursor = getColorFromJson("color-cursor", KB_C_CURSOR);
     name = cJSON_GetObjectItemCaseSensitive(json,  "keyboard-and-result-pos-y");
     if (cJSON_IsNumber(name) != 0) kbPosY = (int)name->valuedouble;
     else kbPosY = KB_Y;
@@ -637,7 +641,7 @@ void processInput() {
                     break;
                     case RG35_START_CODE:
                         if ((keyboardShown != 0) && (strlen(searchWord) != 0)) keyboardShown = 0;
-					break;
+                    break;
                     default:
                     break;
                 }
@@ -698,7 +702,7 @@ void update(int delta) {
 void drawObjects(void) {    
     for (uint8_t i; i < NO_OBJECTS; ++i) {
         if (objects[i].imgVisible == 1)   SDL_BlitSurface(objects[i].img, NULL, screen, &objects[i].imgPos);
-        if (objects[i].textVisible == 1)  drawText(objects[i].textPos, 0, objects[i].name, textFont, activeColor, textAlign, 1);
+        if (objects[i].textVisible == 1)  drawText(objects[i].textPos, 0, objects[i].name, textFont, guideColor, textAlign, 1);
     }
 }
 
@@ -737,9 +741,9 @@ void drawKeyboard() {
     for (uint8_t i = 0; i < KB_ROWS; ++i) {
         for (uint8_t j = 0; j < KB_COLUMNS; ++j) {
             if ((i == selKeyIIdx) && (j == selKeyJIdx)) {
-                drawRect(rect(KB_X + 5 + (KY_W + 2) * j, kby + 67 + (KY_H + 2) * i, KY_W + 2, KY_H + 2), o, skin.key, keyboardAlign);
-                drawKey(KB_X + 6 + (KY_W + 2) * j, kby + 68 + (KY_H + 2) * i, o, keyboardLayout[i][j], skin.keySel);
-            } else drawKey(KB_X + 6 + (KY_W + 2) * j, kby + 68 + (KY_H + 2) * i, o, keyboardLayout[i][j], skin.key);
+                drawRect(rect(KB_X + 5 + (KY_W + 2) * j, kby + 67 + (KY_H + 2) * i, KY_W + 2, KY_H + 2), o, skin.keyTxt, keyboardAlign);
+                drawKey(KB_X + 6 + (KY_W + 2) * j, kby + 68 + (KY_H + 2) * i, o, keyboardLayout[i][j], skin.keySelTxt);
+            } else drawKey(KB_X + 6 + (KY_W + 2) * j, kby + 68 + (KY_H + 2) * i, o, keyboardLayout[i][j], skin.keyTxt);
         }
         drawText(rect(KB_X + 8, kby + 240, 0, 0), o, "Select/Space", keyboardFont, skin.info, keyboardAlign, 5);
         TTF_SizeUTF8(keyboardFont, "Start/Done", &fw, &fh);
