@@ -46,7 +46,7 @@ Object          objects[NO_OBJECTS]    = OBJECTS_CONFIG;
 uint16_t        pressDelay             = FIRST_PRESS_DELAY;
 uint8_t         running                = 1;
 uint8_t         keyboardShown          = 1;
-uint16_t        keyDownTime            = 0;
+uint32_t        keyDownTime            = 0;
 uint8_t         romsFound              = 0;
 uint8_t         selRomIdx              = 0;     /* Selected ROM index     */
 uint8_t         selRomIdxOld           = 0;     /* Used to detect changes */
@@ -560,7 +560,7 @@ void createCommandScript() {
 }
 
 void processInput() {
-    int delta;
+    uint32_t delta;
     SDL_PollEvent(&event);
     int fw, fh;
     switch(event.type) {
@@ -776,9 +776,9 @@ void cleanup() {
 }
 
 int main() {
-    uint16_t new         = 0;
-    uint16_t old         = 0;
-    uint16_t delta       = 0;
+    uint32_t new         = 0;
+    uint32_t old         = 0;
+    uint32_t delta       = 0;
 
     if (setup() == 0) return 0;
     while (running == 1) {
